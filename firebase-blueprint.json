@@ -1,0 +1,207 @@
+{
+  "entities": {
+    "NoteItem": {
+      "title": "NoteItem",
+      "description": "Personal assistant note authored by the user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID."
+        },
+        "title": {
+          "type": "string",
+          "description": "Note title (1-120 chars)."
+        },
+        "content": {
+          "type": "string",
+          "description": "Note body text (0-5000 chars)."
+        },
+        "tag": {
+          "type": "string",
+          "description": "Category tag (1-32 chars)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "title", "content", "tag", "createdAt", "updatedAt"]
+    },
+    "TodoItem": {
+      "title": "TodoItem",
+      "description": "Task item in the user's personal to-do list.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID."
+        },
+        "title": {
+          "type": "string",
+          "description": "Task title (1-160 chars)."
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "Whether the task is completed."
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["LOW", "NORMAL", "HIGH"],
+          "description": "Task priority level."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "title", "completed", "priority", "createdAt", "updatedAt"]
+    },
+    "ReminderItem": {
+      "title": "ReminderItem",
+      "description": "Smart reminder with scheduled notification timestamp.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID."
+        },
+        "title": {
+          "type": "string",
+          "description": "Reminder title (1-160 chars)."
+        },
+        "dueTimeMillis": {
+          "type": "integer",
+          "description": "Target trigger epoch timestamp in milliseconds (> 0)."
+        },
+        "active": {
+          "type": "boolean",
+          "description": "Whether the reminder is active."
+        },
+        "category": {
+          "type": "string",
+          "description": "Reminder category (1-40 chars)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "title", "dueTimeMillis", "active", "category", "createdAt", "updatedAt"]
+    },
+    "UserPreference": {
+      "title": "UserPreference",
+      "description": "User-approved personal memory preference remembered by NOVA AI.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID."
+        },
+        "prefKey": {
+          "type": "string",
+          "description": "Preference label (1-80 chars)."
+        },
+        "prefValue": {
+          "type": "string",
+          "description": "Preference detail (1-300 chars)."
+        },
+        "approvedByUser": {
+          "type": "boolean",
+          "description": "Explicit user approval confirmation flag."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "prefKey", "prefValue", "approvedByUser", "createdAt", "updatedAt"]
+    },
+    "ChatMessageEntity": {
+      "title": "ChatMessageEntity",
+      "description": "Conversational turn persisted for multi-turn assistant context.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID."
+        },
+        "sender": {
+          "type": "string",
+          "enum": ["USER", "NOVA"],
+          "description": "Message author role."
+        },
+        "text": {
+          "type": "string",
+          "description": "Message content (1-4000 chars)."
+        },
+        "language": {
+          "type": "string",
+          "enum": ["hi", "en", "hinglish"],
+          "description": "Detected or selected message language."
+        },
+        "actionTag": {
+          "type": "string",
+          "description": "Optional executed device/assistant action label (0-80 chars)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp set via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "sender", "text", "language", "actionTag", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/notes/{noteId}": {
+      "schema": { "$ref": "#/entities/NoteItem" },
+      "description": "Per-user notes collection"
+    },
+    "/users/{userId}/todos/{todoId}": {
+      "schema": { "$ref": "#/entities/TodoItem" },
+      "description": "Per-user to-do list collection"
+    },
+    "/users/{userId}/reminders/{reminderId}": {
+      "schema": { "$ref": "#/entities/ReminderItem" },
+      "description": "Per-user scheduled reminders collection"
+    },
+    "/users/{userId}/preferences/{prefId}": {
+      "schema": { "$ref": "#/entities/UserPreference" },
+      "description": "Per-user approved memory preferences"
+    },
+    "/users/{userId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessageEntity" },
+      "description": "Per-user NOVA AI conversation history"
+    }
+  }
+}

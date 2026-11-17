@@ -1,0 +1,6 @@
+{
+  "name": "NOVA AI",
+  "description": "Personal AI voice assistant supporting Hindi, English, and Hinglish with device controls, smart reminders, notes, weather, news, and Gemini AI intelligence.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

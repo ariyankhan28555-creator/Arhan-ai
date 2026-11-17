@@ -1,0 +1,172 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- GLOBAL HARDENED HELPERS ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // --- ENTITY VALIDATION HELPERS ---
+    function isValidNoteItem(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             data.content is string && data.content.size() <= 5000 &&
+             data.tag is string && data.tag.size() >= 1 && data.tag.size() <= 32 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidTodoItem(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+             data.completed is bool &&
+             data.priority is string && data.priority in ['LOW', 'NORMAL', 'HIGH'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidReminderItem(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+             data.dueTimeMillis is int && data.dueTimeMillis > 0 &&
+             data.active is bool &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 40 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidUserPreference(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.prefKey is string && data.prefKey.size() >= 1 && data.prefKey.size() <= 80 &&
+             data.prefValue is string && data.prefValue.size() >= 1 && data.prefValue.size() <= 300 &&
+             data.approvedByUser is bool && data.approvedByUser == true &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidChatMessage(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.sender is string && data.sender in ['USER', 'NOVA'] &&
+             data.text is string && data.text.size() >= 1 && data.text.size() <= 4000 &&
+             data.language is string && data.language in ['hi', 'en', 'hinglish'] &&
+             data.actionTag is string && data.actionTag.size() <= 80 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // --- USER-SCOPED COLLECTIONS ---
+    match /users/{userId} {
+      // Notes
+      match /notes/{noteId} {
+        allow get: if isOwner(userId) && isValidId(noteId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(noteId) &&
+                         incoming().keys().hasAll(['userId', 'title', 'content', 'tag', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'content', 'tag', 'createdAt', 'updatedAt']) &&
+                         isValidNoteItem(incoming(), userId);
+        allow update: if isOwner(userId) &&
+                         isValidId(noteId) &&
+                         isValidNoteItem(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'content', 'tag', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(noteId);
+      }
+
+      // To-Do Items
+      match /todos/{todoId} {
+        allow get: if isOwner(userId) && isValidId(todoId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(todoId) &&
+                         incoming().keys().hasAll(['userId', 'title', 'completed', 'priority', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'completed', 'priority', 'createdAt', 'updatedAt']) &&
+                         isValidTodoItem(incoming(), userId);
+        allow update: if isOwner(userId) &&
+                         isValidId(todoId) &&
+                         isValidTodoItem(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'completed', 'priority', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(todoId);
+      }
+
+      // Smart Reminders
+      match /reminders/{reminderId} {
+        allow get: if isOwner(userId) && isValidId(reminderId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(reminderId) &&
+                         incoming().keys().hasAll(['userId', 'title', 'dueTimeMillis', 'active', 'category', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'dueTimeMillis', 'active', 'category', 'createdAt', 'updatedAt']) &&
+                         isValidReminderItem(incoming(), userId);
+        allow update: if isOwner(userId) &&
+                         isValidId(reminderId) &&
+                         isValidReminderItem(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'dueTimeMillis', 'active', 'category', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(reminderId);
+      }
+
+      // User-Approved Preferences
+      match /preferences/{prefId} {
+        allow get: if isOwner(userId) && isValidId(prefId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(prefId) &&
+                         incoming().keys().hasAll(['userId', 'prefKey', 'prefValue', 'approvedByUser', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'prefKey', 'prefValue', 'approvedByUser', 'createdAt', 'updatedAt']) &&
+                         isValidUserPreference(incoming(), userId);
+        allow update: if isOwner(userId) &&
+                         isValidId(prefId) &&
+                         isValidUserPreference(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['prefKey', 'prefValue', 'approvedByUser', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(prefId);
+      }
+
+      // Conversation History
+      match /messages/{messageId} {
+        allow get: if isOwner(userId) && isValidId(messageId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(messageId) &&
+                         incoming().keys().hasAll(['userId', 'sender', 'text', 'language', 'actionTag', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'sender', 'text', 'language', 'actionTag', 'createdAt', 'updatedAt']) &&
+                         isValidChatMessage(incoming(), userId);
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(messageId);
+      }
+    }
+  }
+}
